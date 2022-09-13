@@ -2,6 +2,7 @@ use std::{collections::HashMap, fmt::Display};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
+    Sym(String),
     Var(String),
     Fun(String, Vec<Expr>),
 }
@@ -13,6 +14,8 @@ impl Expr {
         fn _match_with(pattern: &Expr, expr: &Expr, matches: &mut Matches) -> bool {
             use Expr::*;
             match (pattern, expr) {
+                (Sym(_), Sym(_)) => todo!(),
+
                 (Var(name), expr) => {
                     if let Some(already_bound_expr) = matches.get(name) {
                         if already_bound_expr != expr {
@@ -22,15 +25,19 @@ impl Expr {
                     matches.insert(name.clone(), expr.clone());
                     true
                 }
+
                 (Fun(_, _), Var(_)) => false,
                 (Fun(pttrn_name, _), Fun(expr_name, _)) if pttrn_name != expr_name => false,
                 (Fun(_, pttrn_args), Fun(_, expr_args)) if pttrn_args.len() != expr_args.len() => {
                     false
                 }
+
                 (Fun(_, pttrn_args), Fun(_, expr_args)) => pttrn_args
                     .iter()
                     .zip(expr_args)
                     .all(|(pttrn_arg, expr_arg)| _match_with(pttrn_arg, expr_arg, matches)),
+
+                _ => todo!(),
             }
         }
 
@@ -46,6 +53,7 @@ impl Expr {
     pub fn substitute(&self, matches: &Matches) -> Expr {
         use Expr::*;
         match self {
+            Sym(_) => todo!(),
             Var(name) => matches.get(name).unwrap_or(self).clone(),
             Fun(name, args) => Fun(
                 name.clone(),
@@ -60,9 +68,11 @@ impl Expr {
 impl Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         fn p_expr(expr: &Expr) -> String {
+            use Expr::*;
             match expr {
-                Expr::Var(name) => name.to_string(),
-                Expr::Fun(name, args) => format!(
+                Sym(_) => todo!(),
+                Var(name) => name.to_string(),
+                Fun(name, args) => format!(
                     "{}({})",
                     name,
                     args.iter().map(p_expr).collect::<Vec<String>>().join(", ")

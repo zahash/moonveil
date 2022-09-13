@@ -1,4 +1,11 @@
 #[macro_export]
+macro_rules! sym {
+    ($name:ident) => {
+        Expr::Sym(stringify!($name).to_string())
+    };
+}
+
+#[macro_export]
 macro_rules! var {
     ($name:ident) => {
         Expr::Var(stringify!($name).to_string())

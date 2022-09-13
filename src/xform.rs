@@ -16,6 +16,7 @@ impl XForm {
             None => {
                 use Expr::*;
                 match expr {
+                    Sym(_) => todo!(),
                     Var(_) => expr.clone(),
                     Fun(name, args) => Fun(
                         name.clone(),
