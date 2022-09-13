@@ -53,7 +53,7 @@ impl Expr {
     pub fn substitute(&self, matches: &Matches) -> Expr {
         use Expr::*;
         match self {
-            Sym(_) => todo!(),
+            Sym(_) => self.clone(),
             Var(name) => matches.get(name).unwrap_or(self).clone(),
             Fun(name, args) => Fun(
                 name.clone(),
@@ -70,8 +70,7 @@ impl Display for Expr {
         fn p_expr(expr: &Expr) -> String {
             use Expr::*;
             match expr {
-                Sym(_) => todo!(),
-                Var(name) => name.to_string(),
+                Sym(name) | Var(name) => name.to_string(),
                 Fun(name, args) => format!(
                     "{}({})",
                     name,
@@ -175,8 +174,16 @@ mod pattern_match_tests {
 #[cfg(test)]
 mod substitute_tests {
     use super::{Expr, Matches};
-    use crate::{fun, var};
+    use crate::{fun, sym, var};
     use std::collections::HashMap;
+
+    #[test]
+    fn symbols_never_get_substituted() {
+        assert_substitute(sym!(a), HashMap::new(), sym!(a));
+        assert_substitute(sym!(a), HashMap::from([("a".into(), sym!(b))]), sym!(a));
+        assert_substitute(sym!(a), HashMap::from([("a".into(), var!(b))]), sym!(a));
+        assert_substitute(sym!(a), HashMap::from([("a".into(), fun!(F))]), sym!(a));
+    }
 
     #[test]
     fn empty_matches() {
