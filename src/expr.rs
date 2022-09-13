@@ -14,30 +14,27 @@ impl Expr {
         fn _match_with(pattern: &Expr, expr: &Expr, matches: &mut Matches) -> bool {
             use Expr::*;
             match (pattern, expr) {
-                (Sym(_), Sym(_)) => todo!(),
+                (Sym(p_name), Sym(e_name)) => p_name == e_name,
+                (Sym(_), _) => false,
 
-                (Var(name), expr) => {
-                    if let Some(already_bound_expr) = matches.get(name) {
+                (Var(p_name), expr) => {
+                    if let Some(already_bound_expr) = matches.get(p_name) {
                         if already_bound_expr != expr {
                             return false;
                         }
                     }
-                    matches.insert(name.clone(), expr.clone());
+                    matches.insert(p_name.clone(), expr.clone());
                     true
                 }
 
-                (Fun(_, _), Var(_)) => false,
-                (Fun(pttrn_name, _), Fun(expr_name, _)) if pttrn_name != expr_name => false,
-                (Fun(_, pttrn_args), Fun(_, expr_args)) if pttrn_args.len() != expr_args.len() => {
-                    false
-                }
+                (Fun(_, _), Sym(_)) | (Fun(_, _), Var(_)) => false,
+                (Fun(p_name, _), Fun(e_name, _)) if p_name != e_name => false,
+                (Fun(_, p_args), Fun(_, e_args)) if p_args.len() != e_args.len() => false,
 
                 (Fun(_, pttrn_args), Fun(_, expr_args)) => pttrn_args
                     .iter()
                     .zip(expr_args)
                     .all(|(pttrn_arg, expr_arg)| _match_with(pttrn_arg, expr_arg, matches)),
-
-                _ => todo!(),
             }
         }
 
@@ -86,34 +83,61 @@ impl Display for Expr {
 #[cfg(test)]
 mod pattern_match_tests {
     use super::{Expr, Matches};
-    use crate::{fun, var};
+    use crate::{fun, sym, var};
     use pretty_assertions::assert_eq;
 
     #[test]
+    fn nothing_matches_with_a_symbol_except_itself() {
+        assert_matches(sym!(a), sym!(a), vec![]);
+
+        assert_no_matches(sym!(a), sym!(b));
+        assert_no_matches(sym!(a), var!(a));
+        assert_no_matches(sym!(a), var!(b));
+        assert_no_matches(sym!(a), fun!(F));
+        assert_no_matches(sym!(a), fun!(F, var!(x)));
+        assert_no_matches(sym!(a), fun!(F, var!(x), fun!(G, sym!(y)), sym!(z)));
+    }
+
+    #[test]
     fn anything_matches_with_a_variable() {
+        assert_matches(var!(a), sym!(a), vec![("a", sym!(a))]);
         assert_matches(var!(a), var!(a), vec![("a", var!(a))]);
         assert_matches(var!(a), var!(b), vec![("a", var!(b))]);
         assert_matches(var!(a), fun!(F), vec![("a", fun!(F))]);
         assert_matches(var!(a), fun!(F, var!(x)), vec![("a", fun!(F, var!(x)))]);
         assert_matches(
             var!(a),
-            fun!(F, var!(x), fun!(G, var!(y)), var!(z)),
-            vec![("a", fun!(F, var!(x), fun!(G, var!(y)), var!(z)))],
+            fun!(F, var!(x), fun!(G, sym!(y)), sym!(z)),
+            vec![("a", fun!(F, var!(x), fun!(G, sym!(y)), sym!(z)))],
         );
     }
 
     #[test]
     fn function_pattern_only_matches_with_other_functions_with_same_name_and_number_of_args() {
+        assert_no_matches(fun!(F), sym!(a));
         assert_no_matches(fun!(F), var!(a));
         assert_no_matches(fun!(F), fun!(G));
         assert_no_matches(fun!(F, var!(x0)), fun!(F, var!(y0), var!(y1)));
+        assert_no_matches(fun!(F, sym!(x0)), fun!(F, sym!(y0)));
+        assert_no_matches(fun!(F, sym!(x0)), fun!(F, var!(x0)));
+        assert_no_matches(fun!(F, sym!(x0)), fun!(F, var!(y0)));
 
         assert_matches(fun!(F), fun!(F), vec![]);
+        assert_matches(fun!(F, sym!(x0)), fun!(F, sym!(x0)), vec![]);
         assert_matches(fun!(F, var!(x0)), fun!(F, var!(y0)), vec![("x0", var!(y0))]);
+        assert_matches(fun!(F, var!(x0)), fun!(F, sym!(x0)), vec![("x0", sym!(x0))]);
+        assert_matches(fun!(F, var!(x0)), fun!(F, sym!(y0)), vec![("x0", sym!(y0))]);
     }
 
     #[test]
     fn test_with_same_repeated_variables() {
+        assert_no_matches(fun!(F, sym!(x0), sym!(x0)), fun!(F, sym!(y0), sym!(y0)));
+        assert_no_matches(fun!(F, sym!(x0), sym!(x0)), fun!(F, sym!(y0), sym!(y1)));
+        assert_no_matches(
+            fun!(F, sym!(x0), fun!(G, sym!(x1)), sym!(x0)),
+            fun!(F, sym!(y0), fun!(G, sym!(x1)), sym!(y0)),
+        );
+
         assert_matches(
             fun!(F, var!(x0), var!(x0)),
             fun!(F, var!(y0), var!(y0)),
