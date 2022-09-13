@@ -2,7 +2,7 @@ use std::{collections::HashMap, fmt::Display};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
-    Sym(String),
+    Var(String),
     Fun(String, Vec<Expr>),
 }
 
@@ -13,7 +13,7 @@ impl Expr {
         fn _match_with(pattern: &Expr, expr: &Expr, matches: &mut Matches) -> bool {
             use Expr::*;
             match (pattern, expr) {
-                (Sym(name), expr) => {
+                (Var(name), expr) => {
                     if let Some(already_bound_expr) = matches.get(name) {
                         if already_bound_expr != expr {
                             return false;
@@ -22,7 +22,7 @@ impl Expr {
                     matches.insert(name.clone(), expr.clone());
                     true
                 }
-                (Fun(_, _), Sym(_)) => false,
+                (Fun(_, _), Var(_)) => false,
                 (Fun(pttrn_name, _), Fun(expr_name, _)) if pttrn_name != expr_name => false,
                 (Fun(_, pttrn_args), Fun(_, expr_args)) if pttrn_args.len() != expr_args.len() => {
                     false
@@ -46,7 +46,7 @@ impl Expr {
     pub fn substitute(&self, matches: &Matches) -> Expr {
         use Expr::*;
         match self {
-            Sym(name) => matches.get(name).unwrap_or(self).clone(),
+            Var(name) => matches.get(name).unwrap_or(self).clone(),
             Fun(name, args) => Fun(
                 name.clone(),
                 args.iter()
@@ -61,7 +61,7 @@ impl Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         fn p_expr(expr: &Expr) -> String {
             match expr {
-                Expr::Sym(name) => name.to_string(),
+                Expr::Var(name) => name.to_string(),
                 Expr::Fun(name, args) => format!(
                     "{}({})",
                     name,
@@ -77,73 +77,73 @@ impl Display for Expr {
 #[cfg(test)]
 mod pattern_match_tests {
     use super::{Expr, Matches};
-    use crate::{fun, sym};
+    use crate::{fun, var};
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn anything_matches_with_a_symbol() {
-        assert_matches(sym!(a), sym!(a), vec![("a", sym!(a))]);
-        assert_matches(sym!(a), sym!(b), vec![("a", sym!(b))]);
-        assert_matches(sym!(a), fun!(F), vec![("a", fun!(F))]);
-        assert_matches(sym!(a), fun!(F, sym!(x)), vec![("a", fun!(F, sym!(x)))]);
+    fn anything_matches_with_a_variable() {
+        assert_matches(var!(a), var!(a), vec![("a", var!(a))]);
+        assert_matches(var!(a), var!(b), vec![("a", var!(b))]);
+        assert_matches(var!(a), fun!(F), vec![("a", fun!(F))]);
+        assert_matches(var!(a), fun!(F, var!(x)), vec![("a", fun!(F, var!(x)))]);
         assert_matches(
-            sym!(a),
-            fun!(F, sym!(x), fun!(G, sym!(y)), sym!(z)),
-            vec![("a", fun!(F, sym!(x), fun!(G, sym!(y)), sym!(z)))],
+            var!(a),
+            fun!(F, var!(x), fun!(G, var!(y)), var!(z)),
+            vec![("a", fun!(F, var!(x), fun!(G, var!(y)), var!(z)))],
         );
     }
 
     #[test]
     fn function_pattern_only_matches_with_other_functions_with_same_name_and_number_of_args() {
-        assert_no_matches(fun!(F), sym!(a));
+        assert_no_matches(fun!(F), var!(a));
         assert_no_matches(fun!(F), fun!(G));
-        assert_no_matches(fun!(F, sym!(x0)), fun!(F, sym!(y0), sym!(y1)));
+        assert_no_matches(fun!(F, var!(x0)), fun!(F, var!(y0), var!(y1)));
 
         assert_matches(fun!(F), fun!(F), vec![]);
-        assert_matches(fun!(F, sym!(x0)), fun!(F, sym!(y0)), vec![("x0", sym!(y0))]);
+        assert_matches(fun!(F, var!(x0)), fun!(F, var!(y0)), vec![("x0", var!(y0))]);
     }
 
     #[test]
-    fn test_with_same_repeated_symbols() {
+    fn test_with_same_repeated_variables() {
         assert_matches(
-            fun!(F, sym!(x0), sym!(x0)),
-            fun!(F, sym!(y0), sym!(y0)),
-            vec![("x0", sym!(y0))],
+            fun!(F, var!(x0), var!(x0)),
+            fun!(F, var!(y0), var!(y0)),
+            vec![("x0", var!(y0))],
         );
         assert_matches(
-            fun!(F, fun!(G, sym!(x0), sym!(x1)), sym!(x0)),
-            fun!(F, fun!(G, sym!(y0), sym!(y1)), sym!(y0)),
-            vec![("x0", sym!(y0)), ("x1", sym!(y1))],
+            fun!(F, fun!(G, var!(x0), var!(x1)), var!(x0)),
+            fun!(F, fun!(G, var!(y0), var!(y1)), var!(y0)),
+            vec![("x0", var!(y0)), ("x1", var!(y1))],
         );
 
-        assert_no_matches(fun!(F, sym!(x0), sym!(x0)), fun!(F, sym!(y0), sym!(y1)));
+        assert_no_matches(fun!(F, var!(x0), var!(x0)), fun!(F, var!(y0), var!(y1)));
         assert_no_matches(
-            fun!(F, fun!(G, sym!(x0), sym!(x0)), sym!(x1)),
-            fun!(F, fun!(G, sym!(y0), sym!(y1)), sym!(y1)),
+            fun!(F, fun!(G, var!(x0), var!(x0)), var!(x1)),
+            fun!(F, fun!(G, var!(y0), var!(y1)), var!(y1)),
         );
     }
 
     #[test]
     fn test_recursive_pattern_matching() {
         assert_matches(
-            fun!(F, sym!(x0), sym!(x1)),
-            fun!(F, sym!(y0), sym!(y1)),
-            vec![("x0", sym!(y0)), ("x1", sym!(y1))],
+            fun!(F, var!(x0), var!(x1)),
+            fun!(F, var!(y0), var!(y1)),
+            vec![("x0", var!(y0)), ("x1", var!(y1))],
         );
         assert_matches(
-            fun!(F, sym!(x0), fun!(G, sym!(x1)), sym!(x2)),
-            fun!(F, sym!(y0), fun!(G, sym!(y1)), sym!(y2)),
-            vec![("x0", sym!(y0)), ("x1", sym!(y1)), ("x2", sym!(y2))],
+            fun!(F, var!(x0), fun!(G, var!(x1)), var!(x2)),
+            fun!(F, var!(y0), fun!(G, var!(y1)), var!(y2)),
+            vec![("x0", var!(y0)), ("x1", var!(y1)), ("x2", var!(y2))],
         );
         assert_matches(
-            fun!(F, sym!(x0)),
-            fun!(F, fun!(G, sym!(y0), sym!(y1))),
-            vec![("x0", fun!(G, sym!(y0), sym!(y1)))],
+            fun!(F, var!(x0)),
+            fun!(F, fun!(G, var!(y0), var!(y1))),
+            vec![("x0", fun!(G, var!(y0), var!(y1)))],
         );
 
         assert_no_matches(
-            fun!(F, fun!(G, sym!(x0))),
-            fun!(F, fun!(G, sym!(y0), sym!(y1))),
+            fun!(F, fun!(G, var!(x0))),
+            fun!(F, fun!(G, var!(y0), var!(y1))),
         );
     }
 
@@ -165,61 +165,61 @@ mod pattern_match_tests {
 #[cfg(test)]
 mod substitute_tests {
     use super::{Expr, Matches};
-    use crate::{fun, sym};
+    use crate::{fun, var};
     use std::collections::HashMap;
 
     #[test]
     fn empty_matches() {
         assert_substitute(fun!(F), HashMap::new(), fun!(F));
-        assert_substitute(sym!(a), HashMap::new(), sym!(a));
+        assert_substitute(var!(a), HashMap::new(), var!(a));
         assert_substitute(
-            fun!(F, fun!(G, sym!(x)), sym!(y)),
+            fun!(F, fun!(G, var!(x)), var!(y)),
             HashMap::new(),
-            fun!(F, fun!(G, sym!(x)), sym!(y)),
+            fun!(F, fun!(G, var!(x)), var!(y)),
         );
     }
 
     #[test]
     fn partial_matches() {
         assert_substitute(
-            fun!(F, sym!(x), sym!(y)),
-            HashMap::from([("x".into(), sym!(w))]),
-            fun!(F, sym!(w), sym!(y)),
+            fun!(F, var!(x), var!(y)),
+            HashMap::from([("x".into(), var!(w))]),
+            fun!(F, var!(w), var!(y)),
         );
         assert_substitute(
-            fun!(F, fun!(G, sym!(x)), sym!(y)),
-            HashMap::from([("x".into(), sym!(w))]),
-            fun!(F, fun!(G, sym!(w)), sym!(y)),
+            fun!(F, fun!(G, var!(x)), var!(y)),
+            HashMap::from([("x".into(), var!(w))]),
+            fun!(F, fun!(G, var!(w)), var!(y)),
         );
         assert_substitute(
-            fun!(F, fun!(G, sym!(x)), sym!(y), sym!(x)),
-            HashMap::from([("x".into(), sym!(w))]),
-            fun!(F, fun!(G, sym!(w)), sym!(y), sym!(w)),
+            fun!(F, fun!(G, var!(x)), var!(y), var!(x)),
+            HashMap::from([("x".into(), var!(w))]),
+            fun!(F, fun!(G, var!(w)), var!(y), var!(w)),
         );
     }
 
     #[test]
     fn full_matches() {
-        assert_substitute(sym!(a), HashMap::from([("a".into(), sym!(b))]), sym!(b));
+        assert_substitute(var!(a), HashMap::from([("a".into(), var!(b))]), var!(b));
         assert_substitute(
-            fun!(F, sym!(x)),
-            HashMap::from([("x".into(), sym!(y))]),
-            fun!(F, sym!(y)),
+            fun!(F, var!(x)),
+            HashMap::from([("x".into(), var!(y))]),
+            fun!(F, var!(y)),
         );
         assert_substitute(
-            fun!(F, sym!(x), sym!(y)),
-            HashMap::from([("x".into(), sym!(s)), ("y".into(), sym!(t))]),
-            fun!(F, sym!(s), sym!(t)),
+            fun!(F, var!(x), var!(y)),
+            HashMap::from([("x".into(), var!(s)), ("y".into(), var!(t))]),
+            fun!(F, var!(s), var!(t)),
         );
         assert_substitute(
-            fun!(F, fun!(G, sym!(x)), sym!(y)),
-            HashMap::from([("x".into(), sym!(s)), ("y".into(), sym!(t))]),
-            fun!(F, fun!(G, sym!(s)), sym!(t)),
+            fun!(F, fun!(G, var!(x)), var!(y)),
+            HashMap::from([("x".into(), var!(s)), ("y".into(), var!(t))]),
+            fun!(F, fun!(G, var!(s)), var!(t)),
         );
         assert_substitute(
-            fun!(F, fun!(G, sym!(x)), sym!(y), sym!(x)),
-            HashMap::from([("x".into(), sym!(s)), ("y".into(), sym!(t))]),
-            fun!(F, fun!(G, sym!(s)), sym!(t), sym!(s)),
+            fun!(F, fun!(G, var!(x)), var!(y), var!(x)),
+            HashMap::from([("x".into(), var!(s)), ("y".into(), var!(t))]),
+            fun!(F, fun!(G, var!(s)), var!(t), var!(s)),
         );
     }
 

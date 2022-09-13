@@ -16,7 +16,7 @@ impl XForm {
             None => {
                 use Expr::*;
                 match expr {
-                    Sym(_) => expr.clone(),
+                    Var(_) => expr.clone(),
                     Fun(name, args) => Fun(
                         name.clone(),
                         args.iter()
@@ -38,24 +38,24 @@ impl Display for XForm {
 #[cfg(test)]
 mod transform_tests {
     use super::XForm;
-    use crate::{expr::Expr, fun, sym, xform};
+    use crate::{expr::Expr, fun, var, xform};
     // use pretty_assertions::assert_eq;
 
     #[test]
     fn identity_transformation() {
         assert_transformation(xform!(fun!(F), fun!(F)), fun!(F), fun!(F));
         assert_transformation(
-            xform!(fun!(F, sym!(x)), fun!(F, sym!(x))),
-            fun!(F, sym!(y)),
-            fun!(F, sym!(y)),
+            xform!(fun!(F, var!(x)), fun!(F, var!(x))),
+            fun!(F, var!(y)),
+            fun!(F, var!(y)),
         );
         assert_transformation(
             xform!(
-                fun!(F, fun!(G, sym!(x0)), sym!(x1)),
-                fun!(F, fun!(G, sym!(x0)), sym!(x1))
+                fun!(F, fun!(G, var!(x0)), var!(x1)),
+                fun!(F, fun!(G, var!(x0)), var!(x1))
             ),
-            fun!(F, fun!(G, sym!(y0)), sym!(y1)),
-            fun!(F, fun!(G, sym!(y0)), sym!(y1)),
+            fun!(F, fun!(G, var!(y0)), var!(y1)),
+            fun!(F, fun!(G, var!(y0)), var!(y1)),
         );
     }
 
@@ -64,8 +64,8 @@ mod transform_tests {
         assert_transformation(xform!(fun!(F), fun!(F)), fun!(G), fun!(G));
         assert_transformation(
             xform!(fun!(F), fun!(F)),
-            fun!(G, fun!(H, sym!(x), sym!(y)), sym!(z)),
-            fun!(G, fun!(H, sym!(x), sym!(y)), sym!(z)),
+            fun!(G, fun!(H, var!(x), var!(y)), var!(z)),
+            fun!(G, fun!(H, var!(x), var!(y)), var!(z)),
         );
     }
 
@@ -73,14 +73,14 @@ mod transform_tests {
     fn mismatching() {
         assert_transformation(xform!(fun!(F), fun!(F)), fun!(G), fun!(G));
         assert_transformation(xform!(fun!(F), fun!(G)), fun!(H), fun!(H));
-        assert_transformation(xform!(fun!(F), fun!(G)), fun!(F, sym!(x)), fun!(F, sym!(x)));
+        assert_transformation(xform!(fun!(F), fun!(G)), fun!(F, var!(x)), fun!(F, var!(x)));
         assert_transformation(
             xform!(
-                fun!(F, fun!(G, sym!(x), sym!(y)), sym!(z)),
-                fun!(H, sym!(z), sym!(y), fun!(G, sym!(x)))
+                fun!(F, fun!(G, var!(x), var!(y)), var!(z)),
+                fun!(H, var!(z), var!(y), fun!(G, var!(x)))
             ),
-            fun!(K, sym!(a)),
-            fun!(K, sym!(a)),
+            fun!(K, var!(a)),
+            fun!(K, var!(a)),
         );
     }
 
@@ -88,64 +88,64 @@ mod transform_tests {
     fn matching() {
         assert_transformation(xform!(fun!(F), fun!(G)), fun!(F), fun!(G));
         assert_transformation(
-            xform!(fun!(F, sym!(x)), fun!(G, sym!(x))),
-            fun!(F, sym!(y)),
-            fun!(G, sym!(y)),
+            xform!(fun!(F, var!(x)), fun!(G, var!(x))),
+            fun!(F, var!(y)),
+            fun!(G, var!(y)),
         );
         assert_transformation(
-            xform!(fun!(F, sym!(x0), sym!(x1)), fun!(G, sym!(x0), sym!(x1))),
-            fun!(F, sym!(y0), sym!(y1)),
-            fun!(G, sym!(y0), sym!(y1)),
+            xform!(fun!(F, var!(x0), var!(x1)), fun!(G, var!(x0), var!(x1))),
+            fun!(F, var!(y0), var!(y1)),
+            fun!(G, var!(y0), var!(y1)),
         );
         assert_transformation(
             xform!(
-                fun!(F, fun!(G, sym!(x0)), sym!(x1)),
-                fun!(G, fun!(F, sym!(x1)), sym!(x0))
+                fun!(F, fun!(G, var!(x0)), var!(x1)),
+                fun!(G, fun!(F, var!(x1)), var!(x0))
             ),
-            fun!(F, fun!(G, sym!(y0)), sym!(y1)),
-            fun!(G, fun!(F, sym!(y1)), sym!(y0)),
+            fun!(F, fun!(G, var!(y0)), var!(y1)),
+            fun!(G, fun!(F, var!(y1)), var!(y0)),
         );
     }
 
     #[test]
     fn inner_matching() {
         assert_transformation(
-            xform!(fun!(F, sym!(x)), fun!(G, sym!(x))),
-            fun!(H, fun!(F, sym!(y))),
-            fun!(H, fun!(G, sym!(y))),
+            xform!(fun!(F, var!(x)), fun!(G, var!(x))),
+            fun!(H, fun!(F, var!(y))),
+            fun!(H, fun!(G, var!(y))),
         );
         assert_transformation(
-            xform!(fun!(F, sym!(x0), sym!(x1)), fun!(G, sym!(x0), sym!(x1))),
-            fun!(H, fun!(F, sym!(y0), sym!(y1))),
-            fun!(H, fun!(G, sym!(y0), sym!(y1))),
+            xform!(fun!(F, var!(x0), var!(x1)), fun!(G, var!(x0), var!(x1))),
+            fun!(H, fun!(F, var!(y0), var!(y1))),
+            fun!(H, fun!(G, var!(y0), var!(y1))),
         );
         assert_transformation(
-            xform!(fun!(F, sym!(x)), fun!(G, sym!(x))),
-            fun!(H, fun!(F, sym!(y)), fun!(F, sym!(y))),
-            fun!(H, fun!(G, sym!(y)), fun!(G, sym!(y))),
+            xform!(fun!(F, var!(x)), fun!(G, var!(x))),
+            fun!(H, fun!(F, var!(y)), fun!(F, var!(y))),
+            fun!(H, fun!(G, var!(y)), fun!(G, var!(y))),
         );
         assert_transformation(
-            xform!(fun!(F, sym!(x)), fun!(G, sym!(x))),
+            xform!(fun!(F, var!(x)), fun!(G, var!(x))),
             fun!(
                 H,
-                sym!(b),
+                var!(b),
                 fun!(
                     H,
-                    fun!(F, sym!(y)),
-                    sym!(a),
-                    fun!(H, fun!(F, sym!(y)), fun!(F, sym!(y))),
-                    fun!(F, sym!(y))
+                    fun!(F, var!(y)),
+                    var!(a),
+                    fun!(H, fun!(F, var!(y)), fun!(F, var!(y))),
+                    fun!(F, var!(y))
                 )
             ),
             fun!(
                 H,
-                sym!(b),
+                var!(b),
                 fun!(
                     H,
-                    fun!(G, sym!(y)),
-                    sym!(a),
-                    fun!(H, fun!(G, sym!(y)), fun!(G, sym!(y))),
-                    fun!(G, sym!(y))
+                    fun!(G, var!(y)),
+                    var!(a),
+                    fun!(H, fun!(G, var!(y)), fun!(G, var!(y))),
+                    fun!(G, var!(y))
                 )
             ),
         );
@@ -155,18 +155,18 @@ mod transform_tests {
     fn integration_tests() {
         assert_transformation(
             xform!(
-                fun!(SWAP, fun!(PAIR, sym!(a), sym!(b))),
-                fun!(PAIR, sym!(b), sym!(a))
+                fun!(SWAP, fun!(PAIR, var!(a), var!(b))),
+                fun!(PAIR, var!(b), var!(a))
             ),
             fun!(
                 W,
-                fun!(SWAP, fun!(PAIR, fun!(F, sym!(a)), fun!(G, sym!(b)))),
-                fun!(SWAP, fun!(PAIR, fun!(Q, sym!(c)), fun!(Z, sym!(d))))
+                fun!(SWAP, fun!(PAIR, fun!(F, var!(a)), fun!(G, var!(b)))),
+                fun!(SWAP, fun!(PAIR, fun!(Q, var!(c)), fun!(Z, var!(d))))
             ),
             fun!(
                 W,
-                fun!(PAIR, fun!(G, sym!(b)), fun!(F, sym!(a))),
-                fun!(PAIR, fun!(Z, sym!(d)), fun!(Q, sym!(c)))
+                fun!(PAIR, fun!(G, var!(b)), fun!(F, var!(a))),
+                fun!(PAIR, fun!(Z, var!(d)), fun!(Q, var!(c)))
             ),
         );
     }

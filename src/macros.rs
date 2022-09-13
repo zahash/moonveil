@@ -1,7 +1,7 @@
 #[macro_export]
-macro_rules! sym {
+macro_rules! var {
     ($name:ident) => {
-        Expr::Sym(stringify!($name).to_string())
+        Expr::Var(stringify!($name).to_string())
     };
 }
 
