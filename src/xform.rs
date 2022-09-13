@@ -16,10 +16,9 @@ impl XForm {
             None => {
                 use Expr::*;
                 match expr {
-                    Sym(_) => todo!(),
-                    Var(_) => expr.clone(),
-                    Fun(name, args) => Fun(
-                        name.clone(),
+                    Sym(_) | Var(_) => expr.clone(),
+                    Fun(head, args) => Fun(
+                        Box::new(self.apply(head)),
                         args.iter()
                             .map(|arg| self.apply(arg))
                             .collect::<Vec<Expr>>(),
@@ -39,7 +38,7 @@ impl Display for XForm {
 #[cfg(test)]
 mod transform_tests {
     use super::XForm;
-    use crate::{expr::Expr, fun, var, xform};
+    use crate::{expr::Expr, fun, sym, var, xform};
     // use pretty_assertions::assert_eq;
 
     #[test]
@@ -63,10 +62,11 @@ mod transform_tests {
     #[test]
     fn mismatching_identity_transformation() {
         assert_transformation(xform!(fun!(F), fun!(F)), fun!(G), fun!(G));
+        assert_transformation(xform!(fun!(F), fun!(F)), fun!(G), fun!(G));
         assert_transformation(
             xform!(fun!(F), fun!(F)),
-            fun!(G, fun!(H, var!(x), var!(y)), var!(z)),
-            fun!(G, fun!(H, var!(x), var!(y)), var!(z)),
+            fun!(G, fun!(H, var!(x), sym!(y)), var!(z)),
+            fun!(G, fun!(H, var!(x), sym!(y)), var!(z)),
         );
     }
 
@@ -74,15 +74,20 @@ mod transform_tests {
     fn mismatching() {
         assert_transformation(xform!(fun!(F), fun!(F)), fun!(G), fun!(G));
         assert_transformation(xform!(fun!(F), fun!(G)), fun!(H), fun!(H));
-        assert_transformation(xform!(fun!(F), fun!(G)), fun!(F, var!(x)), fun!(F, var!(x)));
+        assert_transformation(xform!(fun!(F), fun!(G)), fun!(F, sym!(x)), fun!(F, sym!(x)));
         assert_transformation(
             xform!(
-                fun!(F, fun!(G, var!(x), var!(y)), var!(z)),
-                fun!(H, var!(z), var!(y), fun!(G, var!(x)))
+                fun!(F, fun!(G, var!(x), sym!(y)), var!(z)),
+                fun!(H, sym!(z), var!(y), fun!(G, var!(x)))
             ),
-            fun!(K, var!(a)),
-            fun!(K, var!(a)),
+            fun!(K, var!(a), sym!(a)),
+            fun!(K, var!(a), sym!(a)),
         );
+    }
+
+    #[test]
+    fn function_head_matching() {
+        assert_transformation(xform!(fun!(F), fun!(G)), fun!(fun!(F)), fun!(fun!(G)));
     }
 
     #[test]
