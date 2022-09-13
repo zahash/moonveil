@@ -53,7 +53,7 @@ impl Expr {
             Sym(_) => self.clone(),
             Var(name) => matches.get(name).unwrap_or(self).clone(),
             Fun(name, args) => Fun(
-                name.clone(),
+                Box::new(name.substitute(matches)),
                 args.iter()
                     .map(|arg| arg.substitute(matches))
                     .collect::<Vec<Expr>>(),
@@ -235,6 +235,25 @@ mod substitute_tests {
             fun!(F, sym!(z), fun!(G, sym!(x)), var!(y), var!(x)),
             HashMap::new(),
             fun!(F, sym!(z), fun!(G, sym!(x)), var!(y), var!(x)),
+        );
+    }
+
+    #[test]
+    fn substitute_function_head() {
+        assert_substitute(
+            fun!(sym!(F)),
+            HashMap::from([("F".into(), var!(G))]),
+            fun!(sym!(F)),
+        );
+        assert_substitute(
+            fun!(var!(F)),
+            HashMap::from([("F".into(), var!(G))]),
+            fun!(var!(G)),
+        );
+        assert_substitute(
+            fun!(fun!(var!(F))),
+            HashMap::from([("F".into(), sym!(G))]),
+            fun!(fun!(sym!(G))),
         );
     }
 
