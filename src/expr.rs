@@ -186,18 +186,25 @@ mod substitute_tests {
     }
 
     #[test]
-    fn empty_matches() {
-        assert_substitute(fun!(F), HashMap::new(), fun!(F));
+    fn substitute_variable_with_anything() {
         assert_substitute(var!(a), HashMap::new(), var!(a));
+        assert_substitute(var!(a), HashMap::from([("a".into(), sym!(b))]), sym!(b));
+        assert_substitute(var!(a), HashMap::from([("a".into(), var!(b))]), var!(b));
+        assert_substitute(var!(a), HashMap::from([("a".into(), fun!(F))]), fun!(F));
+    }
+
+    #[test]
+    fn empty_function_matches() {
+        assert_substitute(fun!(F), HashMap::new(), fun!(F));
         assert_substitute(
-            fun!(F, fun!(G, var!(x)), var!(y)),
+            fun!(F, sym!(z), fun!(G, sym!(x)), var!(y), var!(x)),
             HashMap::new(),
-            fun!(F, fun!(G, var!(x)), var!(y)),
+            fun!(F, sym!(z), fun!(G, sym!(x)), var!(y), var!(x)),
         );
     }
 
     #[test]
-    fn partial_matches() {
+    fn partial_function_matches() {
         assert_substitute(
             fun!(F, var!(x), var!(y)),
             HashMap::from([("x".into(), var!(w))]),
@@ -216,8 +223,7 @@ mod substitute_tests {
     }
 
     #[test]
-    fn full_matches() {
-        assert_substitute(var!(a), HashMap::from([("a".into(), var!(b))]), var!(b));
+    fn full_function_matches() {
         assert_substitute(
             fun!(F, var!(x)),
             HashMap::from([("x".into(), var!(y))]),
