@@ -14,9 +14,13 @@ macro_rules! var {
 
 #[macro_export]
 macro_rules! fun {
-    ($name:ident) => {Expr::Fun(stringify!($name).to_string(), vec![])};
-    ($name:ident,$($args:expr),*) => {
-        Expr::Fun(stringify!($name).to_string(), vec![$($args),*])
+    ($head:ident) => {Expr::Fun(Box::new(Expr::Sym(stringify!($head).to_string())), vec![])};
+    ($head:ident,$($args:expr),*) => {
+        Expr::Fun(Box::new(Expr::Sym(stringify!($head).to_string())), vec![$($args),*])
+    };
+    ($head:expr) => {Expr::Fun(Box::new($head), vec![])};
+    ($head:expr,$($args:expr),*) => {
+        Expr::Fun(Box::new($head), vec![$($args),*])
     };
 }
 

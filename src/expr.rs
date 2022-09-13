@@ -4,7 +4,7 @@ use std::{collections::HashMap, fmt::Display};
 pub enum Expr {
     Sym(String),
     Var(String),
-    Fun(String, Vec<Expr>),
+    Fun(Box<Expr>, Vec<Expr>),
 }
 
 type Matches = HashMap<String, Expr>;
@@ -28,7 +28,7 @@ impl Expr {
                 }
 
                 (Fun(_, _), Sym(_)) | (Fun(_, _), Var(_)) => false,
-                (Fun(p_name, _), Fun(e_name, _)) if p_name != e_name => false,
+                (Fun(p_head, _), Fun(e_head, _)) if !_match_with(p_head, e_head, matches) => false,
                 (Fun(_, p_args), Fun(_, e_args)) if p_args.len() != e_args.len() => false,
 
                 (Fun(_, pttrn_args), Fun(_, expr_args)) => pttrn_args
@@ -92,10 +92,7 @@ mod pattern_match_tests {
 
         assert_no_matches(sym!(a), sym!(b));
         assert_no_matches(sym!(a), var!(a));
-        assert_no_matches(sym!(a), var!(b));
         assert_no_matches(sym!(a), fun!(F));
-        assert_no_matches(sym!(a), fun!(F, var!(x)));
-        assert_no_matches(sym!(a), fun!(F, var!(x), fun!(G, sym!(y)), sym!(z)));
     }
 
     #[test]
@@ -104,29 +101,43 @@ mod pattern_match_tests {
         assert_matches(var!(a), var!(a), vec![("a", var!(a))]);
         assert_matches(var!(a), var!(b), vec![("a", var!(b))]);
         assert_matches(var!(a), fun!(F), vec![("a", fun!(F))]);
-        assert_matches(var!(a), fun!(F, var!(x)), vec![("a", fun!(F, var!(x)))]);
+    }
+
+    #[test]
+    fn function_doesnot_match_with_non_functions() {
+        assert_no_matches(fun!(F), sym!(a));
+        assert_no_matches(fun!(F), var!(a));
+    }
+
+    #[test]
+    fn function_matches_with_other_functions_with_matching_head() {
+        assert_no_matches(fun!(sym!(F)), fun!(sym!(G)));
+        assert_no_matches(fun!(sym!(F)), fun!(var!(F)));
+        assert_no_matches(fun!(sym!(F)), fun!(fun!(F)));
+        assert_no_matches(fun!(fun!(F)), fun!(fun!(G)));
+
+        assert_matches(fun!(var!(a)), fun!(sym!(a)), vec![("a", sym!(a))]);
+        assert_matches(fun!(var!(a)), fun!(var!(a)), vec![("a", var!(a))]);
+        assert_matches(fun!(var!(a)), fun!(var!(b)), vec![("a", var!(b))]);
+        assert_matches(fun!(var!(a)), fun!(fun!(F)), vec![("a", fun!(F))]);
+
         assert_matches(
-            var!(a),
-            fun!(F, var!(x), fun!(G, sym!(y)), sym!(z)),
-            vec![("a", fun!(F, var!(x), fun!(G, sym!(y)), sym!(z)))],
+            fun!(fun!(F, var!(x0), fun!(G, var!(x1)), var!(x2))),
+            fun!(fun!(F, var!(y0), fun!(G, var!(y1)), var!(y2))),
+            vec![("x0", var!(y0)), ("x1", var!(y1)), ("x2", var!(y2))],
         );
     }
 
     #[test]
-    fn function_pattern_only_matches_with_other_functions_with_same_name_and_number_of_args() {
-        assert_no_matches(fun!(F), sym!(a));
-        assert_no_matches(fun!(F), var!(a));
-        assert_no_matches(fun!(F), fun!(G));
+    fn function_pattern_only_matches_with_other_functions_with_same_number_of_args() {
         assert_no_matches(fun!(F, var!(x0)), fun!(F, var!(y0), var!(y1)));
         assert_no_matches(fun!(F, sym!(x0)), fun!(F, sym!(y0)));
         assert_no_matches(fun!(F, sym!(x0)), fun!(F, var!(x0)));
-        assert_no_matches(fun!(F, sym!(x0)), fun!(F, var!(y0)));
 
         assert_matches(fun!(F), fun!(F), vec![]);
         assert_matches(fun!(F, sym!(x0)), fun!(F, sym!(x0)), vec![]);
         assert_matches(fun!(F, var!(x0)), fun!(F, var!(y0)), vec![("x0", var!(y0))]);
         assert_matches(fun!(F, var!(x0)), fun!(F, sym!(x0)), vec![("x0", sym!(x0))]);
-        assert_matches(fun!(F, var!(x0)), fun!(F, sym!(y0)), vec![("x0", sym!(y0))]);
     }
 
     #[test]
