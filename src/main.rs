@@ -6,24 +6,29 @@ use expr::Expr;
 use xform::XForm;
 
 fn main() {
-    let add_pttrn = fun!(ADD, var!(a), var!(b));
-    let add_expr = fun!(
-        ADD,
-        fun!(MUL, var!(a), var!(b)),
-        fun!(SUB, var!(c), var!(d))
+    let differentiation = xform!(
+        fun!(DIFF, fun!(var!(F), var!(x))),
+        fun!(
+            LIM,
+            var!(h),
+            sym!(ZERO),
+            fun!(
+                DIV,
+                fun!(
+                    SUB,
+                    fun!(var!(F), fun!(ADD, var!(x), var!(h))),
+                    fun!(var!(F), var!(x))
+                ),
+                var!(h)
+            )
+        )
     );
 
-    let matches = add_pttrn.match_with(&add_expr).unwrap();
+    println!("{}", differentiation);
 
-    println!("{}", add_pttrn);
-    println!("{}", add_expr);
-    for (k, v) in matches.iter() {
-        println!("{} -> {}", k, v);
-    }
+    let square_diff = fun!(DIFF, fun!(SQUARE, var!(x)));
 
-    let comm_add = xform!(fun!(ADD, var!(a), var!(b)), fun!(ADD, var!(b), var!(a)));
-    println!("{}", comm_add);
+    let diffed = differentiation.apply(&square_diff);
 
-    let trasformed_add = comm_add.apply(&add_expr);
-    println!("{}", trasformed_add);
+    println!("{}", diffed);
 }
